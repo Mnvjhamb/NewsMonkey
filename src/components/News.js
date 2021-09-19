@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import NewsItem from "./NewsItem";
 import Spinner from "./Spinner";
+import InfiniteScroll from "react-infinite-scroll-component";
 export default class News extends Component {
   articles = [
     {
@@ -309,24 +310,42 @@ export default class News extends Component {
     this.getNews();
   }
 
-  handleNextClick = () => {
-    let page = this.state.page + 1;
-    this.getNews(page);
+  fetchMoreData = async () => {
+    var page = this.state.page + 1;
+    var url = `https://newsapi.org/v2/${
+      !this.props.searched
+        ? `top-headlines?country=${this.props.country}&category=${this.props.category}&page=${page}&pageSize=${this.props.pageSize}`
+        : `everything?q=${this.props.searched}`
+    }&apiKey=1a3f7dc89e334599ab267b9ca07affeb`;
+    let data = await fetch(url);
+    let parsedData = await data.json();
+    this.setState({
+      articles: this.state.articles.concat(parsedData.articles),
+      page: page,
+      totalResults: parsedData.totalResults,
+    });
   };
-  handlePreviousClick = () => {
-    let page = this.state.page - 1;
-    this.getNews(page);
+
+  capatlize = (str) => {
+    return str.charAt(0).toUpperCase() + str.slice(1);
   };
 
   render() {
     return (
       <div className="d-flex flex-column align-items-center mb-3">
-        <h2 className="my-3">NewsMonkey - Top Headlines</h2>
+        <h2 className="my-3">
+          NewsMonkey - Top Headlines - {this.capatlize(this.props.category)}
+        </h2>
 
         {this.state.loading ? (
           <Spinner />
         ) : (
-          <>
+          <InfiniteScroll
+            dataLength={this.state.articles.length}
+            next={this.fetchMoreData}
+            hasMore={this.state.articles.length !== this.state.totalResults}
+            loader={<Spinner />}
+          >
             <div className="row d-flex justify-content-center">
               {this.state.articles.map((element) => {
                 return (
@@ -345,25 +364,7 @@ export default class News extends Component {
                 );
               })}
             </div>
-            <div className="container d-flex justify-content-between">
-              <button
-                onClick={this.handlePreviousClick}
-                disabled={this.state.page <= 1}
-                className="btn btn-dark"
-              >
-                Previous
-              </button>
-              <button
-                disabled={
-                  this.state.page === Math.ceil(this.state.totalResults / 10)
-                }
-                onClick={this.handleNextClick}
-                className="btn btn-dark"
-              >
-                Next
-              </button>
-            </div>
-          </>
+          </InfiniteScroll>
         )}
       </div>
     );
